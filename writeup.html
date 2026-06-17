@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Building a RAG assistant with citations and an eval harness — CiteKit</title>
+<meta name="description" content="How to build a RAG assistant that cites its sources and ships an eval harness so you can measure whether answers are grounded. Next.js + Supabase pgvector + Claude." />
+<meta property="og:type" content="article" />
+<meta property="og:title" content="Building a RAG assistant with citations and an eval harness" />
+<meta property="og:description" content="Architecture, pgvector setup, citations, and the eval harness most RAG starters skip. With a live demo you can try with zero keys." />
+<meta property="og:url" content="https://fcristerna.github.io/citekit-live/writeup.html" />
+<meta property="og:image" content="https://fcristerna.github.io/citekit-live/og.png" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Building a RAG assistant with citations and an eval harness" />
+<meta name="twitter:image" content="https://fcristerna.github.io/citekit-live/og.png" />
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+  :root{
+    --bg:#0a0b0d; --panel:#0f1115; --line:#1c2026; --line2:#262b33;
+    --fg:#e9ecf1; --mut:#a0a6b0; --dim:#5d636e; --acc:#6ee7a8;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);line-height:1.7;
+    background-image:radial-gradient(circle at 1px 1px,#13161b 1px,transparent 0);background-size:42px 42px}
+  a{color:var(--acc);text-decoration:none}
+  nav{position:sticky;top:0;z-index:5;backdrop-filter:blur(8px);background:rgba(10,11,13,.72);border-bottom:1px solid var(--line)}
+  .nav{max-width:760px;margin:0 auto;padding:0 22px;height:60px;display:flex;align-items:center;justify-content:space-between}
+  .brand{font-family:var(--mono);font-weight:600}.brand b{color:var(--acc)}
+  .nav-cta{display:flex;gap:16px;align-items:center;font-size:14px}
+  .btn{font-family:var(--mono);font-size:13px;padding:8px 15px;border-radius:7px;border:1px solid var(--acc);color:#06120b;background:var(--acc);font-weight:600}
+  article{max-width:760px;margin:0 auto;padding:48px 22px 80px}
+  article h1{font-size:clamp(28px,4.5vw,40px);line-height:1.12;letter-spacing:-.02em;margin:0 0 6px}
+  article h2{font-size:24px;letter-spacing:-.01em;margin:48px 0 0;padding-top:24px;border-top:1px solid var(--line)}
+  article p,article li{color:var(--fg);font-size:17px}
+  article hr{display:none}
+  article code{font-family:var(--mono);font-size:.88em;background:#15181d;border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:var(--acc)}
+  article pre{background:var(--panel);border:1px solid var(--line2);border-radius:10px;padding:16px 18px;overflow-x:auto;font-size:13.5px;line-height:1.6}
+  article pre code{background:none;border:none;padding:0;color:var(--fg)}
+  .meta{color:var(--dim);font-family:var(--mono);font-size:13px;margin-bottom:30px}
+  .cta-box{margin-top:48px;border:1px solid var(--line2);border-radius:14px;padding:28px;background:var(--panel);text-align:center}
+  .cta-box .btn{display:inline-block;padding:13px 26px;font-size:14px}
+  .cta-box p{color:var(--mut);margin:0 0 18px}
+  footer{max-width:760px;margin:0 auto;padding:24px 22px 60px;color:var(--dim);font-size:13px;font-family:var(--mono)}
+</style>
+</head>
+<body>
+<nav><div class="nav">
+  <a class="brand" href="/citekit-live/">Cite<b>Kit</b></a>
+  <div class="nav-cta">
+    <a href="https://fcristerna.github.io/citekit-live/">Live demo</a>
+    <a class="btn" href="https://3802465781546.gumroad.com/l/citekit">Get the starter — $129</a>
+  </div>
+</div></nav>
+
+<article id="article"></article>
+
+<div style="max-width:760px;margin:0 auto;padding:0 22px">
+  <div class="cta-box">
+    <p>CiteKit packages all of the above — streaming citations, the eval harness, pgvector + RLS, injection guard, rate limiting, demo mode — as a one-time starter.</p>
+    <a class="btn" href="https://3802465781546.gumroad.com/l/citekit">Get the starter — $129</a>
+    &nbsp;&nbsp;<a href="https://fcristerna.github.io/citekit-live/">or try the live demo</a>
+  </div>
+</div>
+
+<footer>CiteKit · RAG assistant starter · Next.js · Supabase · Claude</footer>
+
+<script id="md" type="text/markdown">
+# Building a RAG assistant with citations and an eval harness
+
+Retrieval-Augmented Generation (RAG) is now a well-understood pattern: embed your documents, store them in a vector database, retrieve the relevant chunks at query time, and pass them to a language model as context. The architecture is not hard to wire up. What is hard is knowing whether it works.
+
+Most tutorials stop at "it answers questions." This article goes one step further: how to build a RAG assistant that cites its sources and includes an eval harness so you can measure whether the answers are actually grounded in your documents.
+
+## The architecture
+
+The stack here is:
+
+- **Next.js 14** (App Router) for the frontend and API routes.
+- **Supabase + pgvector** for vector storage and retrieval.
+- **Claude** (Anthropic) for answer generation; OpenAI-compatible embeddings for vectorization.
+- A **fetch-based AI layer** — no SDKs — so the provider is swappable.
+- An **eval harness** in `eval/` that runs the pipeline against defined test cases.
+
+The key design decision is keeping the AI layer thin: `ai.ts` handles embeddings and LLM calls, `retrieval.ts` handles vector search and fallback, and neither imports a framework SDK. Everything goes through `fetch`. Swap Claude for another model, or swap the embedding provider, by changing an env var and one function.
+
+## Citations: show sources, not just answers
+
+A standard RAG endpoint generates an answer and returns it. The user has no way to verify where it came from.
+
+Citations change this. The retrieval step returns chunks along with their source metadata. The answer generation step is instructed to use only the provided context — not its training data. The UI renders the answer alongside the source chunks it drew from, expandable on click.
+
+```typescript
+const { sources } = await retrieve(query);
+const stream = generateAnswer(query, sources); // Claude, context-only
+
+// Send sources as metadata before streaming the answer
+res.write(JSON.stringify({ type: 'sources', data: sources }));
+for await (const chunk of stream) {
+  res.write(JSON.stringify({ type: 'text', data: chunk }));
+}
+```
+
+The citation UI receives the sources from the stream metadata and renders them below the answer. This is not decorative — it is how the user audits the answer.
+
+## Supabase + pgvector setup
+
+The migration handles everything: the `vector` extension, a `documents` table, an `ivfflat` index, and a `match_documents()` function.
+
+```sql
+create extension if not exists vector;
+create table documents (
+  id bigserial primary key,
+  content text not null,
+  embedding vector(1536),
+  metadata jsonb default '{}'
+);
+create index on documents using ivfflat (embedding vector_cosine_ops) with (lists = 100);
+```
+
+RLS is enabled from the start. The anon key (client-side) reads under the public policy; the service_role key (server-side ingest only) writes, and never reaches the browser bundle. Tune the `ivfflat` `lists` parameter to roughly `sqrt(row_count)` as the corpus grows.
+
+## The eval harness: the part most starters skip
+
+The problem with "it looks like it works" is that you are eyeballing the output. When you change the chunking strategy, the prompt, or the model, you have no systematic way to know whether quality went up or down.
+
+You define test cases, then `npm run eval` runs the full pipeline — retrieve, then generateAnswer — against every case and reports **retrieval-hit**, **groundedness**, **facts**, and **latency**.
+
+Groundedness uses LLM-as-judge when an API key is set, or deterministic term-overlap scoring when it is not (noisier, but runnable offline). The runner exits non-zero if any metric falls below threshold — so it can gate CI:
+
+```yaml
+- name: Run RAG eval
+  run: npm run eval
+```
+
+If retrieval-hit drops below 80% after a chunking change, the build fails. That is the difference between maintenance and guesswork.
+
+## Demo mode: zero credentials, full smoke test
+
+One constraint that paid off: the build must complete and the chat must work with no credentials at all. The retrieval layer falls back to lexical scoring over seed data when Supabase is not configured; the answer layer assembles the answer from chunks when no LLM key is set.
+
+```bash
+npm install
+npm run build   # exits 0, no credentials needed
+npm run dev     # chat works, showing seed data with citations
+```
+
+The eval also runs in this mode — verify the product before connecting any paid services.
+
+## Security most starters leave out
+
+**Prompt injection guard.** Retrieved documents are untrusted input. If someone embeds "Ignore all previous instructions" in a document you ingest, a naive RAG executes it. A guard strips injection patterns from retrieved context before it reaches the system prompt.
+
+**Service role key isolation.** The service_role key bypasses RLS — it belongs in the ingest script only, never in the bundle. The AI module is marked `server-only`.
+
+**Rate limiting.** The streaming endpoint is rate-limited per IP; swap the in-memory store for Redis in serverless deployments.
+
+## Try it before you build it
+
+The eval harness, the citation UI, and the fetch-based AI layer are the parts worth examining. The demo runs all three with zero keys: https://fcristerna.github.io/citekit-live/
+</script>
+<script>
+  document.getElementById('article').innerHTML =
+    '<h1>Building a RAG assistant with citations and an eval harness</h1>' +
+    '<div class="meta">RAG · Next.js · pgvector · Claude · evaluation</div>' +
+    marked.parse(document.getElementById('md').textContent.replace(/^#\s.*\n/, ''));
+</script>
+</body>
+</html>
