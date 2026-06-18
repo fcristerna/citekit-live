@@ -469,5 +469,13 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 </script>
+<script>
+(function(){
+  var TRACK_URL="https://cilcrcpjxqkrtrvkzcsh.supabase.co/functions/v1/track";
+  var p=location.pathname,q=new URLSearchParams(location.search);
+  var payload={path:p,ref:document.referrer||null,utm_source:q.get("utm_source"),utm_medium:q.get("utm_medium"),utm_campaign:q.get("utm_campaign")};
+  fetch(TRACK_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),keepalive:true}).catch(function(){});
+})();
+</script>
 </body>
 </html>
