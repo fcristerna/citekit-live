@@ -179,8 +179,41 @@
   .btn-cta:hover{filter:brightness(1.08)}
   .cta-note{font-size:12px;color:var(--dim);margin-top:10px;font-family:var(--mono)}
 
+  /* ── Audience capture ── */
+  .audience-section{
+    border-top:1px solid var(--line);padding:40px 0 0;
+  }
+  .audience-inner{
+    max-width:860px;margin:0 auto;padding:0 24px;
+  }
+  .audience-card{
+    border:1px solid var(--line2);border-radius:var(--radius);padding:24px 28px;
+    background:var(--panel);display:flex;align-items:center;justify-content:space-between;
+    gap:24px;flex-wrap:wrap;
+  }
+  .audience-text{}
+  .audience-text h3{font-size:16px;font-weight:640;letter-spacing:-.01em;margin-bottom:6px}
+  .audience-text p{color:var(--mut);font-size:13px;line-height:1.5;margin:0}
+  .audience-text a{color:var(--acc)}
+  .audience-form{display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap}
+  .aud-input{
+    background:#13161b;border:1px solid var(--line2);border-radius:7px;
+    color:var(--fg);font-size:13px;padding:9px 13px;font-family:var(--sans);
+    outline:none;transition:border-color .15s;width:220px;
+  }
+  .aud-input:focus{border-color:var(--acc)}
+  .aud-input::placeholder{color:var(--dim)}
+  .aud-btn{
+    background:var(--acc);border:none;border-radius:7px;color:#06120b;
+    font-family:var(--mono);font-size:12px;font-weight:700;
+    padding:9px 14px;cursor:pointer;transition:filter .15s;white-space:nowrap;
+  }
+  .aud-btn:hover{filter:brightness(1.1)}
+  .aud-btn:disabled{opacity:.5;cursor:default}
+  .aud-ok{display:none;font-family:var(--mono);font-size:12px;color:var(--acc)}
+
   footer{
-    border-top:1px solid var(--line);padding:28px 0;
+    border-top:1px solid var(--line);padding:28px 0;margin-top:28px;
     font-family:var(--mono);font-size:12px;color:var(--dim);
   }
   .footer-inner{
@@ -192,6 +225,9 @@
     .hero{padding:36px 0 24px}
     .chat-messages{min-height:260px}
     .demo-banner{flex-direction:column;gap:8px}
+    .audience-card{flex-direction:column;align-items:flex-start}
+    .aud-input{width:100%}
+    .audience-form{width:100%}
   }
 </style>
 </head>
@@ -275,6 +311,25 @@
     <div class="cta-note">One-time payment &middot; commercial license &middot; self-hosted</div>
   </div>
 
+</div>
+
+<!-- Audience capture -->
+<div class="audience-section">
+  <div class="audience-inner">
+    <div class="audience-card">
+      <div class="audience-text">
+        <h3>Get the RAG production checklist + occasional deep-dives</h3>
+        <p>25 actionable items across retrieval, citations, eval, security, and deploy.
+          <a href="rag-checklist.html">Preview it here</a> &mdash; free, no signup required to read.
+          Subscribe for future posts on RAG, evals, and production AI.</p>
+      </div>
+      <div class="audience-form">
+        <input class="aud-input" id="aud-email" type="email" placeholder="your@email.com" autocomplete="email" />
+        <button class="aud-btn" id="aud-btn" onclick="audienceSub()">Get the checklist</button>
+        <span class="aud-ok" id="aud-ok">You're in.</span>
+      </div>
+    </div>
+  </div>
 </div>
 
 <footer>
@@ -476,6 +531,31 @@ document.addEventListener('DOMContentLoaded', () => {
   var payload={path:p,ref:document.referrer||null,utm_source:q.get("utm_source"),utm_medium:q.get("utm_medium"),utm_campaign:q.get("utm_campaign")};
   fetch(TRACK_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),keepalive:true}).catch(function(){});
 })();
+</script>
+<script>
+var SUBSCRIBE_URL="https://cilcrcpjxqkrtrvkzcsh.supabase.co/functions/v1/subscribe";
+async function audienceSub(){
+  var emailEl=document.getElementById("aud-email");
+  var btn=document.getElementById("aud-btn");
+  var ok=document.getElementById("aud-ok");
+  var email=(emailEl.value||"").trim();
+  if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)){
+    emailEl.style.borderColor="var(--warn)";emailEl.focus();return;
+  }
+  emailEl.style.borderColor="";btn.disabled=true;btn.textContent="...";
+  try{
+    var q=new URLSearchParams(location.search);
+    await fetch(SUBSCRIBE_URL,{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({email:email,source_path:location.pathname,utm_source:q.get("utm_source")||null})});
+    emailEl.style.display="none";btn.style.display="none";ok.style.display="inline";
+    // Redirect to checklist after brief pause
+    setTimeout(function(){window.open("rag-checklist.html","_blank");},400);
+  }catch(e){btn.disabled=false;btn.textContent="Get the checklist";}
+}
+document.addEventListener("DOMContentLoaded",function(){
+  var inp=document.getElementById("aud-email");
+  if(inp) inp.addEventListener("keydown",function(e){if(e.key==="Enter")audienceSub();});
+});
 </script>
 </body>
 </html>
