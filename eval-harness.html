@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Why your RAG needs an eval harness (and how to build one) — CiteKit</title>
+<meta name="description" content="Most RAG pipelines are measured by intuition. This article shows how to build a lightweight eval harness that measures retrieval-hit, groundedness, and facts — and makes it a CI gate." />
+<meta property="og:type" content="article" />
+<meta property="og:title" content="Why your RAG needs an eval harness (and how to build one)" />
+<meta property="og:description" content="The problem with 'it looks like it works'. Retrieval-hit, groundedness, facts. LLM-as-judge vs. deterministic overlap. Gate it in CI." />
+<meta property="og:url" content="https://fcristerna.github.io/citekit-live/eval-harness.html" />
+<meta property="og:image" content="https://fcristerna.github.io/citekit-live/og.png" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Why your RAG needs an eval harness (and how to build one)" />
+<meta name="twitter:image" content="https://fcristerna.github.io/citekit-live/og.png" />
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+  :root{
+    --bg:#0a0b0d; --panel:#0f1115; --line:#1c2026; --line2:#262b33;
+    --fg:#e9ecf1; --mut:#a0a6b0; --dim:#5d636e; --acc:#6ee7a8;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);line-height:1.7;
+    background-image:radial-gradient(circle at 1px 1px,#13161b 1px,transparent 0);background-size:42px 42px}
+  a{color:var(--acc);text-decoration:none}
+  nav{position:sticky;top:0;z-index:5;backdrop-filter:blur(8px);background:rgba(10,11,13,.72);border-bottom:1px solid var(--line)}
+  .nav{max-width:760px;margin:0 auto;padding:0 22px;height:60px;display:flex;align-items:center;justify-content:space-between}
+  .brand{font-family:var(--mono);font-weight:600}.brand b{color:var(--acc)}
+  .nav-cta{display:flex;gap:16px;align-items:center;font-size:14px}
+  .btn{font-family:var(--mono);font-size:13px;padding:8px 15px;border-radius:7px;border:1px solid var(--acc);color:#06120b;background:var(--acc);font-weight:600}
+  article{max-width:760px;margin:0 auto;padding:48px 22px 80px}
+  article h1{font-size:clamp(28px,4.5vw,40px);line-height:1.12;letter-spacing:-.02em;margin:0 0 6px}
+  article h2{font-size:24px;letter-spacing:-.01em;margin:48px 0 0;padding-top:24px;border-top:1px solid var(--line)}
+  article p,article li{color:var(--fg);font-size:17px}
+  article hr{display:none}
+  article code{font-family:var(--mono);font-size:.88em;background:#15181d;border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:var(--acc)}
+  article pre{background:var(--panel);border:1px solid var(--line2);border-radius:10px;padding:16px 18px;overflow-x:auto;font-size:13.5px;line-height:1.6}
+  article pre code{background:none;border:none;padding:0;color:var(--fg)}
+  .meta{color:var(--dim);font-family:var(--mono);font-size:13px;margin-bottom:30px}
+  .cta-box{margin-top:48px;border:1px solid var(--line2);border-radius:14px;padding:28px;background:var(--panel);text-align:center}
+  .cta-box .btn{display:inline-block;padding:13px 26px;font-size:14px}
+  .cta-box p{color:var(--mut);margin:0 0 18px}
+  .more-writeups{margin-top:48px;border-top:1px solid var(--line);padding-top:32px}
+  .more-writeups h2{font-size:18px;margin:0 0 16px;letter-spacing:-.01em;border:none;padding:0}
+  .more-writeups ul{list-style:none;margin:0;padding:0}
+  .more-writeups li{margin-bottom:10px;font-size:15px}
+  footer{max-width:760px;margin:0 auto;padding:24px 22px 60px;color:var(--dim);font-size:13px;font-family:var(--mono)}
+</style>
+</head>
+<body>
+<nav><div class="nav">
+  <a class="brand" href="/citekit-live/">Cite<b>Kit</b></a>
+  <div class="nav-cta">
+    <a href="https://fcristerna.github.io/citekit-live/">Live demo</a>
+    <a class="btn" href="https://3802465781546.gumroad.com/l/citekit">Get the starter — $129</a>
+  </div>
+</div></nav>
+
+<article id="article"></article>
+
+<div style="max-width:760px;margin:0 auto;padding:0 22px">
+  <div class="cta-box">
+    <p>CiteKit ships with this eval harness already wired — retrieval-hit, groundedness, LLM-as-judge, CI gate. One-time starter, no subscription.</p>
+    <a class="btn" href="https://3802465781546.gumroad.com/l/citekit">Get the starter — $129</a>
+    &nbsp;&nbsp;<a href="https://fcristerna.github.io/citekit-live/">or try the live demo</a>
+  </div>
+
+  <div class="more-writeups">
+    <h2>More writeups</h2>
+    <ul>
+      <li><a href="writeup.html">Building a RAG assistant with citations and an eval harness</a></li>
+      <li><a href="pgvector-rls.html">A production-safe pgvector + RLS setup for RAG</a></li>
+    </ul>
+  </div>
+</div>
+
+<footer>CiteKit · RAG assistant starter · Next.js · Supabase · Claude</footer>
+
+<script id="md" type="text/markdown">
+# Why your RAG needs an eval harness (and how to build one)
+
+The most common RAG quality assurance strategy is "I asked it a few questions and the answers looked good." This works fine while you are the only user and nothing changes. It breaks the moment you tune a parameter — different chunk size, different prompt, different model — and have no baseline to compare against.
+
+An eval harness is a small test suite that runs your full pipeline against defined cases and produces numeric metrics. It is not a heavy framework. The core is a few dozen lines of TypeScript that you run with `npm run eval`. This article explains what to measure, how to measure it, and how to make it a hard gate in CI.
+
+## The problem with eyeballing
+
+Consider a common scenario: you decide to increase your chunk size from 512 to 1024 tokens because you think more context will produce better answers. You test three queries. The answers look more complete. You ship it.
+
+What you do not see: retrieval precision dropped because larger chunks now score lower cosine similarity to short queries. The answers are longer but are drawing from fewer relevant chunks. Two weeks later a user complains that the assistant is confidently wrong.
+
+If you had measured retrieval-hit before and after the change, you would have caught this before it shipped.
+
+## Metrics worth measuring
+
+**Retrieval-hit** is the fraction of test cases where at least one of the retrieved chunks contains the expected answer content. This is your foundation metric. If retrieval fails, nothing downstream can save it.
+
+```typescript
+function retrievalHit(chunks: Chunk[], expected: string): boolean {
+  return chunks.some(c =>
+    c.content.toLowerCase().includes(expected.toLowerCase())
+  );
+}
+```
+
+**Groundedness** measures whether the generated answer actually uses the retrieved context rather than hallucinating. Deterministic groundedness counts how many key facts from the answer can be traced back to the retrieved chunks. LLM-as-judge groundedness asks the model to score the answer on a 1-5 scale given the context. Both are useful; deterministic is free to run.
+
+**Facts** is a list of specific claims the answer must contain. You define them per test case. A facts score of 3/5 means the answer produced three of the five expected claims.
+
+**Latency** matters for streaming interfaces. A p95 retrieval latency above 800ms is noticeable. Track it.
+
+## Test case structure
+
+Each test case has a query, the facts the answer must contain, a hint for what a retrieved chunk should cover, and optional thresholds:
+
+```typescript
+interface EvalCase {
+  query: string;
+  expectedFacts: string[];       // must appear in the answer
+  retrievalHint: string;         // substring to find in top chunks
+  thresholds?: {
+    retrievalHit?: number;       // default 1 (must hit)
+    groundedness?: number;       // 0-1, default 0.6
+    factsMin?: number;           // minimum facts matched, default 1
+  };
+}
+```
+
+A minimal suite of 10-20 cases that cover your major document topics and edge cases (empty corpus, ambiguous query, cross-document synthesis) is enough to catch regressions.
+
+## LLM-as-judge vs. deterministic overlap
+
+Deterministic overlap is fast, free, and consistent. You strip punctuation, lowercase both strings, and check whether the expected terms appear in the generated text. The weakness: it rewards verbatim copying and misses paraphrases.
+
+LLM-as-judge is slower and costs tokens, but it understands semantic equivalence. Ask the judge to rate groundedness 1-5 given the answer and the source chunks:
+
+```typescript
+async function llmGroundednessScore(
+  answer: string,
+  context: string[]
+): Promise<number> {
+  const prompt = `Rate how well this answer is grounded in the provided context.
+Context: ${context.join('\n---\n')}
+Answer: ${answer}
+Score 1 (not grounded) to 5 (fully grounded). Return only the number.`;
+
+  const score = parseInt(await llmCall(prompt), 10);
+  return score / 5; // normalize to 0-1
+}
+```
+
+Cache judge responses by a hash of (query, answer, context) so you do not re-score identical runs. In CI with an API key available, use the judge. In offline or demo mode, fall back to deterministic.
+
+## Wiring it to CI
+
+The runner exits non-zero if any metric falls below threshold. That is the only contract CI needs:
+
+```yaml
+# .github/workflows/eval.yml
+- name: Run RAG eval
+  env:
+    SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+    SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  run: npm run eval
+```
+
+Without credentials, the harness runs against the seed corpus in demo mode — still useful for catching import errors, schema breaks, and logic regressions. With credentials, it runs the full pipeline against your production Supabase instance.
+
+The runner output is a table:
+
+```
+query                          ret-hit  grounded  facts  latency
+"what is the return policy"    pass     0.82      3/3    340ms
+"shipping to EU"               pass     0.71      2/3    410ms
+"bulk discount tiers"          FAIL     0.44      1/4    290ms
+---
+retrieval-hit:  100% (2/2 non-fail)
+groundedness:   0.77 avg
+facts:          5/7
+overall:        FAIL (1 case below threshold)
+```
+
+A failed eval is a red build. That is the difference between having a quality gate and having a hope.
+
+## The cost of not having this
+
+The failure mode without an eval harness is not immediate. It is gradual. You make changes, things seem fine, then six months later the assistant is unreliable enough that users stop trusting it. At that point you have no data trail showing when the regression happened or which change caused it.
+
+Fifteen minutes to define 10 test cases and wire up the runner is the investment. The return is that you can tune your pipeline — chunking, prompts, models, retrieval parameters — and know numerically whether you improved it.
+
+The CiteKit starter ships with this harness already wired, including demo-mode fallback so it runs with zero credentials. Try it at the live demo: https://fcristerna.github.io/citekit-live/
+</script>
+<script>
+  document.getElementById('article').innerHTML =
+    '<h1>Why your RAG needs an eval harness (and how to build one)</h1>' +
+    '<div class="meta">RAG · evaluation · LLM-as-judge · CI · Next.js</div>' +
+    marked.parse(document.getElementById('md').textContent.replace(/^#\s.*\n/, ''));
+</script>
+</body>
+</html>
