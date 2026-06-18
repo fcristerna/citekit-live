@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Designing honest RAG citations: what to show users and why — CiteKit</title>
+<meta name="description" content="Most RAG implementations treat citations as a UI feature you add at the end: render the answer, then list the source documents below it. This ordering is wrong," />
+<meta property="og:type" content="article" />
+<meta property="og:title" content="Designing honest RAG citations: what to show users and why" />
+<meta property="og:description" content="Most RAG implementations treat citations as a UI feature you add at the end: render the answer, then list the source documents below it. This ordering is wrong," />
+<meta property="og:url" content="https://fcristerna.github.io/citekit-live/rag-citation-design.html" />
+<meta property="og:image" content="https://fcristerna.github.io/citekit-live/og.png" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Designing honest RAG citations: what to show users and why" />
+<meta name="twitter:image" content="https://fcristerna.github.io/citekit-live/og.png" />
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+  :root{
+    --bg:#0a0b0d; --panel:#0f1115; --line:#1c2026; --line2:#262b33;
+    --fg:#e9ecf1; --mut:#a0a6b0; --dim:#5d636e; --acc:#6ee7a8;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);line-height:1.7;
+    background-image:radial-gradient(circle at 1px 1px,#13161b 1px,transparent 0);background-size:42px 42px}
+  a{color:var(--acc);text-decoration:none}
+  nav{position:sticky;top:0;z-index:5;backdrop-filter:blur(8px);background:rgba(10,11,13,.72);border-bottom:1px solid var(--line)}
+  .nav{max-width:760px;margin:0 auto;padding:0 22px;height:60px;display:flex;align-items:center;justify-content:space-between}
+  .brand{font-family:var(--mono);font-weight:600}.brand b{color:var(--acc)}
+  .nav-cta{display:flex;gap:16px;align-items:center;font-size:14px}
+  .btn{font-family:var(--mono);font-size:13px;padding:8px 15px;border-radius:7px;border:1px solid var(--acc);color:#06120b;background:var(--acc);font-weight:600}
+  article{max-width:760px;margin:0 auto;padding:48px 22px 80px}
+  article h1{font-size:clamp(28px,4.5vw,40px);line-height:1.12;letter-spacing:-.02em;margin:0 0 6px}
+  article h2{font-size:24px;letter-spacing:-.01em;margin:48px 0 0;padding-top:24px;border-top:1px solid var(--line)}
+  article p,article li{color:var(--fg);font-size:17px}
+  article hr{display:none}
+  article code{font-family:var(--mono);font-size:.88em;background:#15181d;border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:var(--acc)}
+  article pre{background:var(--panel);border:1px solid var(--line2);border-radius:10px;padding:16px 18px;overflow-x:auto;font-size:13.5px;line-height:1.6}
+  article pre code{background:none;border:none;padding:0;color:var(--fg)}
+  .meta{color:var(--dim);font-family:var(--mono);font-size:13px;margin-bottom:30px}
+  .cta-box{margin-top:48px;border:1px solid var(--line2);border-radius:14px;padding:28px;background:var(--panel);text-align:center}
+  .cta-box .btn{display:inline-block;padding:13px 26px;font-size:14px}
+  .cta-box p{color:var(--mut);margin:0 0 18px}
+  .more-writeups{margin-top:48px;border-top:1px solid var(--line);padding-top:32px}
+  .more-writeups h2{font-size:18px;margin:0 0 16px;letter-spacing:-.01em;border:none;padding:0}
+  .more-writeups ul{list-style:none;margin:0;padding:0}
+  .more-writeups li{margin-bottom:10px;font-size:15px}
+  footer{max-width:760px;margin:0 auto;padding:24px 22px 60px;color:var(--dim);font-size:13px;font-family:var(--mono)}
+</style>
+</head>
+<body>
+<nav><div class="nav">
+  <a class="brand" href="/citekit-live/">Cite<b>Kit</b></a>
+  <div class="nav-cta">
+    <a href="https://fcristerna.github.io/citekit-live/">Live demo</a>
+    <a class="btn" href="https://3802465781546.gumroad.com/l/citekit">Get the starter — $129</a>
+  </div>
+</div></nav>
+
+<article id="article"></article>
+
+<div style="max-width:760px;margin:0 auto;padding:0 22px">
+  <div class="cta-box">
+    <p>CiteKit packages the patterns described above — streaming citations, the eval harness, pgvector + RLS, injection guard, rate limiting, demo mode — as a one-time starter kit.</p>
+    <a class="btn" href="https://3802465781546.gumroad.com/l/citekit">Get the starter — $129</a>
+    &nbsp;&nbsp;<a href="https://fcristerna.github.io/citekit-live/">or try the live demo</a>
+  </div>
+
+  <div class="more-writeups">
+    <h2>More writeups</h2>
+    <ul>
+      <li><a href="writeup.html">Building a RAG assistant with citations and an eval harness</a></li>
+      <li><a href="eval-harness.html">Why your RAG needs an eval harness (and how to build one)</a></li>
+      <li><a href="pgvector-rls.html">A production-safe pgvector + RLS setup for RAG</a></li>
+    </ul>
+  </div>
+</div>
+
+<footer>CiteKit · RAG assistant starter · Next.js · Supabase · Claude</footer>
+
+<script id="md" type="text/markdown">
+# Designing honest RAG citations: what to show users and why
+
+Most RAG implementations treat citations as a UI feature you add at the end: render the
+answer, then list the source documents below it. This ordering is wrong, and it is not just
+aesthetic. The order reveals what the system thinks citations are for. If they are an afterthought,
+the system has implicitly decided that users should trust answers rather than verify them.
+
+Good RAG citations are a verification mechanism, not a credibility signal. The distinction
+matters because it changes every decision: what data to attach to a source, when to send it
+relative to the answer stream, and what to show when retrieval finds nothing.
+
+## The citation data model
+
+A citation has three pieces: the content that was retrieved, the source it came from, and the
+similarity score that ranked it.
+
+```typescript
+interface Citation {
+  id: string;
+  content: string;          // the actual chunk text
+  metadata: {
+    source: string;         // document title or URL
+    section?: string;       // section heading, if available
+    page?: number;          // for PDFs
+  };
+  similarity: number;       // cosine similarity to the query, 0-1
+}
+```
+
+The similarity score is not decorative. It tells the user how relevant the retrieved chunk
+actually was. A similarity of 0.95 means the retrieved content closely matched the query.
+A similarity of 0.61 means you are near the retrieval threshold and the answer may be
+reaching. Surface this.
+
+Do not pass the full embedding vector to the client. The similarity is a derived float —
+compute it server-side in the `match_documents()` function and return only that.
+
+## Streaming order: sources before answer
+
+The most common implementation streams the answer first and attaches sources at the end.
+This is backwards.
+
+When sources arrive after the answer, the user has already read and mentally committed to
+the answer before they can check what it was based on. Citations become a post-hoc
+justification layer, not a verification tool.
+
+Send sources first, as structured metadata, before any answer tokens flow:
+
+```typescript
+// Route handler (Next.js App Router)
+export async function POST(req: Request) {
+  const { query } = await req.json();
+  const sources = await retrieve(query);
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      const enc = new TextEncoder();
+
+      // 1. Send sources first
+      controller.enqueue(enc.encode(
+        JSON.stringify({ type: 'sources', data: sources }) + '\n'
+      ));
+
+      // 2. Then stream the answer
+      const llmStream = generateAnswer(query, sources);
+      for await (const chunk of llmStream) {
+        controller.enqueue(enc.encode(
+          JSON.stringify({ type: 'text', data: chunk }) + '\n'
+        ));
+      }
+
+      controller.enqueue(enc.encode(
+        JSON.stringify({ type: 'done' }) + '\n'
+      ));
+      controller.close();
+    },
+  });
+
+  return new Response(stream, {
+    headers: { 'Content-Type': 'application/x-ndjson' },
+  });
+}
+```
+
+The client parses the NDJSON stream. When it receives a `sources` event, it renders the
+citation panel immediately. The user sees what the answer will be based on before the
+first word arrives.
+
+## The UI: collapsible chunks, not just titles
+
+Showing source titles is the minimum. Showing the actual retrieved chunk is the difference
+between a citation and an auditable citation.
+
+The pattern: a collapsed list of source titles, each expandable to show the verbatim chunk
+text. The chunk is the unit that the model saw — not the full document, the chunk. If the
+chunk does not support the claim in the answer, that is visible immediately.
+
+```typescript
+function CitationPanel({ sources }: { sources: Citation[] }) {
+  const [open, setOpen] = useState<string | null>(null);
+
+  return (
+    <aside>
+      {sources.map((s) => (
+        <div key={s.id}>
+          <button onClick={() => setOpen(open === s.id ? null : s.id)}>
+            {s.metadata.source}
+            <span>{(s.similarity * 100).toFixed(0)}% match</span>
+          </button>
+          {open === s.id && <blockquote>{s.content}</blockquote>}
+        </div>
+      ))}
+    </aside>
+  );
+}
+```
+
+Show the similarity score next to each source. A developer using your product can see
+at a glance whether retrieval is working. An end user learns to be more skeptical when
+similarity is low.
+
+## What to show when retrieval finds nothing
+
+There are two failure modes and they require different responses.
+
+**No chunks above the threshold.** The query did not match anything with similarity above
+`match_threshold`. The honest response is: "I did not find relevant information in the
+knowledge base." Do not stream an answer assembled from marginally relevant chunks.
+Do not hallucinate an answer using model training data.
+
+```typescript
+if (sources.length === 0) {
+  return Response.json({
+    answer: "I didn't find relevant information for this question in the knowledge base.",
+    sources: [],
+  });
+}
+```
+
+**Chunks found, answer not fully supported.** This is harder to detect automatically.
+The practical defense is the system prompt: instruct the model to explicitly say when
+a question cannot be answered from the provided context. A grounded system prompt is
+what separates "I don't know" from a plausible-sounding hallucination.
+
+## The language distinction that matters
+
+There is a sentence-level distinction that most RAG systems collapse:
+
+- "The document says X." — the model found X in a retrieved chunk.
+- "X is true." — the model is asserting X from its training data.
+
+Both can appear in the same answer if the system prompt does not prevent it. The model
+has knowledge beyond what you put in its context, and it will use that knowledge when
+context is thin.
+
+The system prompt fix is direct: "Answer based only on the provided context. If the
+context does not support an answer, say so." The more important fix is the eval:
+test whether the model actually follows this instruction by generating queries whose
+correct answer is "I don't know" and checking whether the model hallucinates instead.
+
+CiteKit ships with a citation-first streaming setup, the inject-guard that prevents
+retrieved chunks from hijacking the prompt, and an eval harness that tests groundedness
+and retrieval-hit against defined cases. See the [demo](https://fcristerna.github.io/citekit-live/) or
+[get the starter](https://3802465781546.gumroad.com/l/citekit).
+
+</script>
+<script>
+  document.getElementById('article').innerHTML =
+    '<h1>Designing honest RAG citations: what to show users and why</h1>' +
+    '<div class="meta">RAG · citations · UX · trust · grounding</div>' +
+    marked.parse(document.getElementById('md').textContent.replace(/^#\s.*\n/, ''));
+</script>
+<script>
+(function(){
+  var TRACK_URL="https://cilcrcpjxqkrtrvkzcsh.supabase.co/functions/v1/track";
+  var p=location.pathname,q=new URLSearchParams(location.search);
+  var payload={path:p,ref:document.referrer||null,utm_source:q.get("utm_source"),utm_medium:q.get("utm_medium"),utm_campaign:q.get("utm_campaign")};
+  fetch(TRACK_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),keepalive:true}).catch(function(){});
+})();
+</script>
+</body>
+</html>
