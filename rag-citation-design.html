@@ -47,17 +47,6 @@
   .more-writeups ul{list-style:none;margin:0;padding:0}
   .more-writeups li{margin-bottom:10px;font-size:15px}
   footer{max-width:760px;margin:0 auto;padding:24px 22px 60px;color:var(--dim);font-size:13px;font-family:var(--mono)}
-  .sub-box{margin-top:32px;border:1px solid var(--line2);border-radius:12px;padding:22px 24px;background:var(--panel)}
-  .sub-box h3{font-size:15px;font-weight:640;margin:0 0 6px;letter-spacing:-.01em}
-  .sub-box p{color:var(--mut);font-size:13px;margin:0 0 14px;line-height:1.5}
-  .sub-row{display:flex;gap:8px;flex-wrap:wrap}
-  .sub-input{flex:1;min-width:180px;background:#13161b;border:1px solid var(--line2);border-radius:7px;color:var(--fg);font-size:13px;padding:9px 12px;font-family:inherit;outline:none;transition:border-color .15s}
-  .sub-input:focus{border-color:var(--acc)}
-  .sub-input::placeholder{color:var(--dim)}
-  .sub-btn{background:var(--acc);border:none;border-radius:7px;color:#06120b;font-family:var(--mono);font-size:12px;font-weight:700;padding:9px 14px;cursor:pointer;transition:filter .15s;white-space:nowrap}
-  .sub-btn:hover{filter:brightness(1.1)}
-  .sub-btn:disabled{opacity:.5;cursor:default}
-  .sub-ok{display:none;color:var(--acc);font-family:var(--mono);font-size:12px;margin-top:8px}
 </style>
 </head>
 <body>
@@ -76,17 +65,6 @@
     <p>CiteKit packages the patterns described above — streaming citations, the eval harness, pgvector + RLS, injection guard, rate limiting, demo mode — as a one-time starter kit.</p>
     <a class="btn" href="https://3802465781546.gumroad.com/l/citekit">Get the starter — $129</a>
     &nbsp;&nbsp;<a href="https://fcristerna.github.io/citekit-live/">or try the live demo</a>
-  </div>
-
-  <div class="sub-box">
-    <h3>Get the RAG production checklist + occasional deep-dives</h3>
-    <p>25 actionable items: retrieval, citations, eval, security, deploy.
-      <a href="rag-checklist.html" style="color:var(--acc)">Read it free</a> — subscribe for future posts.</p>
-    <div class="sub-row">
-      <input class="sub-input" id="sub-email" type="email" placeholder="your@email.com" autocomplete="email" />
-      <button class="sub-btn" id="sub-btn" onclick="doSub()">Subscribe</button>
-    </div>
-    <div class="sub-ok" id="sub-ok">You're in. Occasional deep-dives, no spam.</div>
   </div>
 
   <div class="more-writeups">
@@ -281,22 +259,6 @@ and retrieval-hit against defined cases. See the [demo](https://fcristerna.githu
   var payload={path:p,ref:document.referrer||null,utm_source:q.get("utm_source"),utm_medium:q.get("utm_medium"),utm_campaign:q.get("utm_campaign")};
   fetch(TRACK_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),keepalive:true}).catch(function(){});
 })();
-var SUBSCRIBE_URL="https://cilcrcpjxqkrtrvkzcsh.supabase.co/functions/v1/subscribe";
-async function doSub(){
-  var emailEl=document.getElementById("sub-email");
-  var btn=document.getElementById("sub-btn");
-  var ok=document.getElementById("sub-ok");
-  var email=(emailEl.value||"").trim();
-  if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)){emailEl.style.borderColor="#f0a85e";emailEl.focus();return;}
-  emailEl.style.borderColor="";btn.disabled=true;btn.textContent="...";
-  try{
-    var q=new URLSearchParams(location.search);
-    await fetch(SUBSCRIBE_URL,{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({email:email,source_path:location.pathname,utm_source:q.get("utm_source")||null})});
-    emailEl.style.display="none";btn.style.display="none";ok.style.display="block";
-  }catch(e){btn.disabled=false;btn.textContent="Subscribe";}
-}
-document.getElementById("sub-email").addEventListener("keydown",function(e){if(e.key==="Enter")doSub();});
 </script>
 </body>
 </html>
